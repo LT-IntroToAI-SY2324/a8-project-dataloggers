@@ -1,0 +1,2 @@
+from neural_net_UCI_data import parse_line
+from neural_net_UCI_data import normalize
