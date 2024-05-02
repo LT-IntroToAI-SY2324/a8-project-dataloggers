@@ -2,24 +2,31 @@ from typing import Tuple
 from neural import *
 from sklearn.model_selection import train_test_split
 
+from typing import Tuple, List
+
 def parse_line(line: str) -> Tuple[List[float], List[float]]:
-    """Splits line of CSV into inputs and output (transormfing output as appropriate)
+    """Splits a line of CSV into inputs and output, transforming the output as appropriate.
 
     Args:
-        line - one line of the CSV as a string
+        line: One line of the CSV as a string.
 
     Returns:
-        tuple of input list and output list
+        A tuple of input list and output list.
     """
-    tokens = line.split(",")
-    out = int(tokens[0])
-    output = [0 if out == 1 else 0.5 if out == 2 else 1]
+    # Split the line by comma, stripping spaces
+    tokens = [token.strip() for token in line.split(',')]
 
-    inpt = [float(x) for x in tokens[1:]]
-    return (inpt, output)
+    # Process the output (income), where '>50K' becomes [1.0] and '<=50K' becomes [0.0]
+    output = [1.0 if tokens[-1] == '>50K' else 0.0]
 
+    # Process inputs: skipping the income value and converting relevant fields to floats
+    # Convert categorical variables to numerical codes if necessary (not done here)
+    inputs = [float(tokens[i]) if i in {0, 2, 4, 10, 11, 12} else tokens[i] for i in range(len(tokens) - 1)]
 
+    return (inputs, output)
 def normalize(data: List[Tuple[List[float], List[float]]]):
+
+
     """Makes the data range for each input feature from 0 to 1
 
     Args:
