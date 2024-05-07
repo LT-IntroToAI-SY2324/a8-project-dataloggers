@@ -1,69 +1,56 @@
-from typing import Tuple
-from neural import *
+from typing import Tuple, List
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 
-from typing import Tuple, List
+# Load the dataset into a DataFrame to easily manage categorical transformations
+data = pd.read_csv("adult.data", header=None)
+columns = {1, 3, 5, 6, 7, 8, 9, 13}  # Set of indices with categorical data
 
-def parse_line(line: str) -> Tuple[List[float], List[float]]:
-    """Splits a line of CSV into inputs and output, transforming the output as appropriate.
+# Initialize LabelEncoder dictionary
+def initialize_encoders(data, columns):
+    return {col: LabelEncoder().fit(data[col].astype(str)) for col in columns}
 
-    Args:
-        line: One line of the CSV as a string.
+encoders = initialize_encoders(data, columns)
 
-    Returns:
-        A tuple of input list and output list.
-    """
-    # Split the line by comma, stripping spaces
-    tokens = [token.strip() for token in line.split(',')]
-
-    # Process the output (income), where '>50K' becomes [1.0] and '<=50K' becomes [0.0]
-    output = [1.0 if tokens[-1] == '>50K' else 0.0]
-
-    # Process inputs: skipping the income value and converting relevant fields to floats
-    # Convert categorical variables to numerical codes if necessary (not done here)
-    inputs = [float(tokens[i]) if i in {0, 2, 4, 10, 11, 12} else tokens[i] for i in range(len(tokens) - 1)]
-
+def parse_line(row, encoders):
+    inputs = []
+    # Use iloc to handle indexing properly with Series objects
+    for i in range(len(row) - 1):  # Excluding the last column (output)
+        token = row.iloc[i]
+        if i in encoders:
+            # Ensure the token is a string, as encoders expect that format
+            inputs.append(float(encoders[i].transform([str(token)])[0]))
+        else:
+            inputs.append(float(token))
+    # Directly access the last column for the output
+    output = [1.0 if row.iloc[-1].strip() == '>50K' else 0.0]
     return (inputs, output)
-def normalize(data: List[Tuple[List[float], List[float]]]):
 
 
-    """Makes the data range for each input feature from 0 to 1
 
-    Args:
-        data - list of (input, output) tuples
+def normalize(data):
+    max_values = [max(col) for col in zip(*[d[0] for d in data])]  # Ensure normalization considers only input part
+    min_values = [min(col) for col in zip(*[d[0] for d in data])]
+    normalized_data = [
+        [(x - min_val) / (max_val - min_val) if max_val > min_val else 0 for x, min_val, max_val in zip(row[0], min_values, max_values)]
+        for row in data
+    ]
+    return [(norm, row[1]) for norm, row in zip(normalized_data, data)]
 
-    Returns:
-        normalized data where input features are mapped to 0-1 range (output already
-        mapped in parse_line)
-    """
-    leasts = len(data[0][0]) * [100.0]
-    mosts = len(data[0][0]) * [0.0]
+# Read and process the dataset
+with open("adult.data", "r") as f:
+    training_data = [parse_line(line, encoders) for line in f.readlines() if len(line) > 4]
 
-    for i in range(len(data)):
-        for j in range(len(data[i][0])):
-            if data[i][0][j] < leasts[j]:
-                leasts[j] = data[i][0][j]
-            if data[i][0][j] > mosts[j]:
-                mosts[j] = data[i][0][j]
-
-    for i in range(len(data)):
-        for j in range(len(data[i][0])):
-            data[i][0][j] = (data[i][0][j] - leasts[j]) / (mosts[j] - leasts[j])
-    return data
+normalized_training_data = normalize(training_data)
+train, test = train_test_split(normalized_training_data, test_size=0.2)
 
 
-with open("wine_data.txt", "r") as f:
-    training_data = [parse_line(line) for line in f.readlines() if len(line) > 4]
-
-# print(training_data)
-td = normalize(training_data)
-# print(td)
-
-train, test = train_test_split(td)
-
-nn = NeuralNet(13, 3, 1)
-nn.train(train, iters=10000, print_interval=1000, learning_rate=0.2)
-
-for i in nn.test_with_expected(test):
-    difference = round(abs(i[1][0] - i[2][0]), 3)
-    print(f"desired: {i[1]}, actual: {i[2]} diff: {difference}")
+class NeuralNet:
+    def __init__(self, input_nodes, hidden_nodes, output_nodes):
+        # Initialize the neural network
+        pass
+    
+    def train(self, data, iterations, learning_rate, print_interval):
+        # Train the neural network
+        pass
