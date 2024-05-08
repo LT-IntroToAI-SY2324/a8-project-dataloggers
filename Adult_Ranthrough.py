@@ -1,41 +1,56 @@
+from neural_net_UCI_data import parse_line
+from neural_net_UCI_data import normalize
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+import numpy as np
+from sklearn.model_selection import train_test_split
+from neural_net import NeuralNet  # Make sure NeuralNet is properly defined in neural_net.py
 
-def initialize_encoders(data):
-    encoders = {}
-    categorical_indices = [1, 3, 5, 6, 7, 8, 9, 13]  # Assuming these are the indices of categorical columns
-    for index in categorical_indices:
-        encoder = LabelEncoder()
-        data.iloc[:, index] = data.iloc[:, index].astype(str)  # Ensure data is the proper type
-        encoder.fit(data.iloc[:, index])
-        encoders[index] = encoder
-    return encoders
+# Function to load and preprocess the dataset
+def load_and_preprocess_data(filepath):
+    # Load the dataset
+    data = pd.read_csv(filepath, header=None, names=[
+        "Age", "Workclass", "fnlwgt", "Education", "Education-Num", "Marital-Status",
+        "Occupation", "Relationship", "Race", "Sex", "Capital-Gain", "Capital-Loss",
+        "Hours-per-Week", "Native-Country", "Income"
+    ])
+    
+    # Handle missing values by replacing ' ?' with NaN and then dropping these rows
+    data.replace(' ?', pd.NA, inplace=True)
+    data.dropna(inplace=True)
+    
+    # Encode categorical variables using one-hot encoding
+    categorical_cols = ["Workclass", "Education", "Marital-Status", "Occupation",
+                        "Relationship", "Race", "Sex", "Native-Country"]
+    data = pd.get_dummies(data, columns=categorical_cols)
+    
+    # Encode the target variable 'Income'
+    data['Income'] = data['Income'].apply(lambda x: 1 if x.strip() == '>50K' else 0)
+    
+    # Extract inputs and outputs
+    inputs = data.drop('Income', axis=1).values
+    outputs = data['Income'].values.reshape(-1, 1)
+    
+    return inputs, outputs
 
-def parse_line(tokens, encoders):
-    inputs = []
-    for i, token in enumerate(tokens[:-1]):
-        if i in encoders:
-            inputs.append(float(encoders[i].transform([token])[0]))
-        else:
-            inputs.append(float(token))
-    output = [1.0 if tokens[-1].strip() == '>50K' else 0.0]
-    return (inputs, output)
+# Correct the filepath to point to your actual data file location
+filepath = '/Users/isaacespadas/a8-project/adult dat set/adult.data'
 
-def process_and_print_dataset(filename: str):
-    data = pd.read_csv(filename, header=None)
-    encoders = initialize_encoders(data)
-    scaler = StandardScaler()
+inputs, outputs = load_and_preprocess_data(filepath)
 
-    # Parse each row in the dataframe
-    all_data = [parse_line(row, encoders) for _, row in data.iterrows()]
-    inputs = [d[0] for d in all_data]
+# Split the data into training and testing sets
+train_inputs, test_inputs, train_outputs, test_outputs = train_test_split(
+    inputs, outputs, test_size=0.2, random_state=42, shuffle=True
+)
 
-    # Normalize inputs
-    normalized_inputs = scaler.fit_transform(inputs)
+# Initialize the neural network with appropriate dimensions
+num_features = train_inputs.shape[1]  # Determine the number of input features dynamically
+nn = NeuralNet(n_input=num_features, n_hidden=10, n_output=1)
 
-    # Print normalized data and output
-    for norm, (_, output) in zip(normalized_inputs, all_data):
-        print(list(norm), output)
+# Train the neural network
+nn.train(train_inputs, train_outputs, epochs=100, lr=0.1, momentum=0.1)
 
-dataset_path = "adult.data"
-process_and_print_dataset(dataset_path)
+# Evaluate the model and calculate accuracy
+# Assuming evaluate is now adjusted to handle multiple inputs:
+predicted_outputs = nn.evaluate(test_inputs)  # Directly pass all test inputs if evaluate is adjusted
+accuracy = (predicted_outputs.round() == test_outputs).mean()
+print(f'Test Accuracy: {accuracy:.2%}')

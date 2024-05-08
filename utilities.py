@@ -34,7 +34,7 @@ def make_random_array(
 # take the raw output of a node and essentially determine if it fires.  They often tend
 # to compress the range of output in some way for cleaner gradients and input to
 # subsequent layers.
-#test change
+
 
 def sigmoid(x: float) -> float:
     """Computes 1/(1+e^-x)
